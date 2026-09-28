@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "SeñaLeng",
+    "slug": "senaleng",
+    "version": "1.0.0",
+    "description": "Aprende Lengua de Señas Mexicana a tu ritmo",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "senaleng",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "mx.edu.uta.senaleng",
+      "infoPlist": {
+        "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true }
+      }
+    },
+    "android": {
+      "package": "mx.edu.uta.senaleng",
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#DDC7FA",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "SeñaLeng",
+      "shortName": "SeñaLeng",
+      "themeColor": "#6C5CE7",
+      "backgroundColor": "#F5F3FF"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#6C5CE7"
+        }
+      ]
+    ]
+  }
+}

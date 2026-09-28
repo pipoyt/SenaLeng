@@ -1,56 +1,95 @@
-# Welcome to your Expo app 👋
+# SeñaLeng 🤟 — Aprende Lengua de Señas Mexicana
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Proyecto integrador de la **Unidad I – Aplicaciones Web Progresivas**
+Ingeniería en Desarrollo y Gestión de Software · **IDGS-10A** · Universidad Tecnológica de Aguascalientes
+Profesor: Jesus Bryan Gonzalez Delgado · **Equipo 6**
 
-## Get started
+| Integrante | Matrícula |
+|---|---|
+| Christopher Esquivel García | 230747 |
+| Jesus Antonio Castillo Coronado | 230192 |
+| Axel Ivan Feliciano Hernandez | 230538 |
+| Karol Teresa Bernal Gallegos | 230627 |
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## ¿Qué es?
 
-2. Start the app
+SeñaLeng es una aplicación móvil multiplataforma (Android, iOS y web) para aprender **Lengua de Señas Mexicana (LSM)**. Consume una **API REST propia hecha con Node.js + Express** que implementa las operaciones **CRUD** descritas en el documento del proyecto (secciones 10 y 11).
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+┌──────────────────────────┐   HTTP / JSON    ┌─────────────────────────┐     ┌──────────────┐
+│  App móvil               │ ───────────────▶ │  SeñaLeng API           │ ──▶ │ data/db.json │
+│  React Native + Expo     │ ◀─────────────── │  Node.js + Express      │     │ (persistencia)│
+│  (caché en AsyncStorage) │                  │  Swagger en /api/docs   │     └──────────────┘
+└──────────────────────────┘                  └─────────────────────────┘
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Estructura del repositorio
 
-### Other setup steps
+```
+senaleng/
+├── api/            API REST (Node.js + Express)         → ver api/README.md
+├── app/            App móvil (React Native + Expo)      → ver app/README.md
+├── docs/           Documentación técnica
+│   ├── GUIA_INSTALACION.md   Paso a paso para correr todo (Windows / macOS)
+│   ├── API.md                Referencia de endpoints con ejemplos
+│   ├── ARQUITECTURA.md       Arquitectura, modelo de datos, pantallas y flujos
+│   ├── PRUEBAS.md            Plan de pruebas y resultados
+│   ├── RECOMENDACIONES.md    Observaciones al documento y plan para la Unidad II
+│   ├── SenaLeng.postman_collection.json
+│   └── capturas/             Capturas de la app funcionando
+└── README.md
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Inicio rápido
 
-## Learn more
+Requisitos: **Node.js 20 o superior** (recomendado 22/24 LTS), npm y la app **Expo Go** en el celular.
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+# 1) API
+cd api
+npm install
+npm run dev          # http://localhost:3000/api  ·  docs: http://localhost:3000/api/docs
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+# 2) App (en otra terminal)
+cd app
+npm install
+npx expo start       # escanea el QR con Expo Go (misma red Wi-Fi que la PC)
+                     # o presiona "w" para abrirla en el navegador
+```
 
-## Join the community
+> La app detecta sola la IP de tu computadora a partir del servidor de Expo. Si no conecta, cámbiala en la pestaña **Perfil → Conexión con la API**. Detalles y solución de problemas en [docs/GUIA_INSTALACION.md](docs/GUIA_INSTALACION.md).
 
-Join our community of developers creating universal apps.
+## Funcionalidades implementadas
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Documento | Implementación |
+|---|---|
+| Fig. 2 Splash Screen | `SplashScreen.js` animado + splash nativo con el logo |
+| Fig. 3 Pantalla de inicio | `HomeScreen.js`: lección del día con progreso real y categorías |
+| Fig. 4 Listado de señas | `SenasListScreen.js`: búsqueda, filtros por categoría, pull-to-refresh |
+| Fig. 5 Detalle de seña | `SenaDetailScreen.js`: descripción, favorito, relacionadas, video, "aprendida" |
+| Fig. 6 Eliminar de favoritos | `ConfirmDeleteSheet.js` (DELETE `/api/favoritos/:id`) |
+| Fig. 7 Añadir favoritos | `AgregarFavoritosScreen.js` (POST `/api/favoritos`) con aviso tipo *toast* |
+| Fig. 8 Editar favoritos | `FavoritosScreen.js` + `CommentSheet.js` (PATCH `/api/favoritos/:id`) |
+| Tabla 3 CRUD | Favoritos: Create / Read / Update / Delete completos |
+| Sección 11.6 Endpoints | Todos los endpoints de la tabla + extras (relacionadas, categorías, progreso) |
+| Sección 11.3 Swagger | OpenAPI 3.0 en `/api/docs` |
+| Sección 10.1 Almacenamiento local | Caché de respuestas GET en AsyncStorage (modo sin conexión) |
+| CRUD de la entidad Seña | Crear (botón ＋), editar (✏️) y eliminar (🗑️) desde la app |
+| Progreso del usuario | Marcar "aprendida" + pestaña Perfil con avance por categoría |
+
+## Tecnologías
+
+| Capa | Tecnología |
+|---|---|
+| App | React Native 0.86 · Expo SDK 57 · React Navigation 7 · AsyncStorage |
+| API | Node.js · Express 4 · CORS · Morgan · swagger-ui-express |
+| Datos | Archivo JSON con escritura atómica (sustituible por Prisma + PostgreSQL en la Unidad II) |
+| Pruebas | `node:test` + Supertest (22 pruebas) · Playwright (flujo E2E en web) |
+
+> **Nota sobre versiones:** el documento indica Expo SDK 52 / React Native 0.76. La app de **Expo Go** de las tiendas solo ejecuta el SDK más reciente, por eso el proyecto usa **SDK 57**. Ver [docs/RECOMENDACIONES.md](docs/RECOMENDACIONES.md).
+
+## Aviso sobre el contenido
+
+Las descripciones de las señas incluidas en los datos semilla son **material de ejemplo para desarrollo**. Antes de publicar la app deben ser revisadas por hablantes nativos de LSM o asociaciones de personas sordas, tal como plantea el propio documento (sección 2.4).
