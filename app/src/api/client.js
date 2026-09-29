@@ -14,10 +14,14 @@ let onUnauthorized = null;
 
 export const getApiUrl = () => baseUrl;
 
-/** Convierte "/uploads/videos/x.mp4" en una URL completa hacia la API. */
+/**
+ * Convierte "/uploads/videos/x.mp4" (video guardado en la API) en una URL completa.
+ * Las URLs completas (https://...) y los archivos locales del teléfono
+ * (file://, content://, blob:, ph://...) se devuelven tal cual.
+ */
 export const resolveMediaUrl = (url) => {
   if (!url) return null;
-  if (/^https?:\/\//i.test(url)) return url;
+  if (!url.startsWith('/') || url.startsWith('//')) return url;
   return `${baseUrl.replace(/\/api\/?$/, '')}${url}`;
 };
 
