@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import BackHeader from '../components/BackHeader';
 import Button from '../components/Button';
@@ -22,6 +23,7 @@ export default function SenaDetailScreen({ route, navigation }) {
   const [confirm, setConfirm] = useState(false);
   const { favBySena, addFavorito, removeFavorito, progreso, toggleAprendida, refreshFavoritos } = useAppData();
   const toast = useToast();
+  const { can } = useAuth();
 
   const load = useCallback(async () => {
     try {
@@ -72,16 +74,12 @@ export default function SenaDetailScreen({ route, navigation }) {
     }
   };
 
-  const verVideo = async () => {
+  const verVideo = () => {
     if (!sena.videoUrl) {
-      toast('El video de esta seña aún no está disponible');
+      toast(can('admin') ? 'Esta seña aún no tiene video: ¡grábalo tú!' : 'El video de esta seña aún no está disponible');
       return;
     }
-    try {
-      await Linking.openURL(sena.videoUrl);
-    } catch {
-      toast('No se pudo abrir el video', 'error');
-    }
+    navigation.navigate('Video', { sena });
   };
 
   const eliminarSena = async () => {
@@ -105,8 +103,12 @@ export default function SenaDetailScreen({ route, navigation }) {
           title="Detalle"
           right={
             <>
-              <IconButton icon="✏️" tone="warn" label="Editar seña" onPress={() => navigation.navigate('SenaForm', { sena })} />
-              <IconButton icon="🗑️" tone="danger" label="Eliminar seña" onPress={() => setConfirm(true)} />
+              {can('admin') ? (
+                <IconButton icon="✏️" tone="warn" label="Editar seña" onPress={() => navigation.navigate('SenaForm', { sena })} />
+              ) : null}
+              {can('superusuario') ? (
+                <IconButton icon="🗑️" tone="danger" label="Eliminar seña" onPress={() => setConfirm(true)} />
+              ) : null}
             </>
           }
         />
@@ -129,6 +131,7 @@ export default function SenaDetailScreen({ route, navigation }) {
         <View style={styles.pills}>
           <Text style={styles.pill}>{sena.categoria}</Text>
           <Text style={[styles.pill, { backgroundColor: '#E8F7EE', color: colors.success }]}>{sena.nivel}</Text>
+          {sena.videoUrl ? <Text style={[styles.pill, { backgroundColor: '#FFF1DC', color: '#B45309' }]}>🎬 Con video</Text> : null}
         </View>
         <Text style={[font.h1, { fontSize: 26 }]}>{sena.nombre}</Text>
         <Text style={styles.desc}>{sena.descripcion}</Text>
@@ -172,7 +175,15 @@ export default function SenaDetailScreen({ route, navigation }) {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button title="▶  Ver video de la seña" onPress={verVideo} />
+        <Button title={sena.videoUrl ? '▶  Ver video de la seña' : '▶  Video no disponible aún'} onPress={verVideo} variant={sena.videoUrl ? 'primary' : 'outline'} />
+        {can('admin') ? (
+          <Button
+            title={sena.videoUrl ? '🎥  Grabar una nueva versión' : '🎥  Grabar video de esta seña'}
+            variant="outline"
+            onPress={() => navigation.navigate('GrabarVideo', { sena })}
+            style={{ marginTop: 10 }}
+          />
+        ) : null}
       </View>
 
       <ConfirmDeleteSheet

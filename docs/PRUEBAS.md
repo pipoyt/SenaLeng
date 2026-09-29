@@ -9,7 +9,7 @@ cd api
 npm test
 ```
 
-Resultado (28-sep-2026): **22 pruebas, 22 aprobadas, 0 fallidas.**
+Resultado (v2, 28-sep-2026): **27 pruebas, 27 aprobadas, 0 fallidas.** (La tabla de abajo corresponde a la v1; la v2 agrega las suites *Autenticación*, *Roles*, *Videos y aprobación* y *Estadísticas*, y ahora todas las operaciones de escritura se prueban con sesión.)
 
 | # | Suite | Caso | Esperado |
 |---|---|---|---|
@@ -67,3 +67,36 @@ Sin errores de JavaScript en consola durante todo el recorrido.
 - [ ] Cambiar la URL en Perfil y "Probar conexión".
 - [ ] Teclado no tapa el formulario ni la hoja de comentario.
 - [ ] Lector de pantalla (TalkBack / VoiceOver) anuncia botones y avisos.
+
+
+## 4. Pruebas v2 — autenticación, roles y videos
+
+### Automatizadas (API)
+
+| Suite | Casos |
+|---|---|
+| Autenticación | Registro con rol usuario y token · validaciones y correo repetido · login incorrecto (401) y bloqueo tras 5 intentos (429) · token ausente/inválido · cambio de contraseña |
+| Roles | Solo superusuarios listan usuarios · asignar admin y superusuario · no cambiar el propio rol · no tocar al principal · un super no degrada a otro super, el principal sí · el rol aplica al instante |
+| Señas | Lectura pública · crear/editar requiere admin, eliminar requiere superusuario · un admin no puede fijar `videoUrl` |
+| Favoritos / Progreso | Cada usuario solo ve y modifica lo suyo |
+| Videos | Un usuario no envía videos · flujo admin → super aprueba → la seña queda con video · segundo video reemplaza al anterior · rechazar exige motivo · admin ve solo los suyos · archivo no-video (400), demasiado grande (413), seña inexistente (404) · reglas de borrado |
+| Estadísticas | Solo el principal (403 para super y admin) · contenido del panel · siempre existe un único principal |
+
+### Recorrido E2E con los 4 roles (Playwright, 390×844)
+
+| # | Rol | Paso | Captura |
+|---|---|---|---|
+| 1 | — | Pantalla de inicio de sesión | `capturas/v2/01-login.png` |
+| 2 | — | Registro de "Ana López" | `capturas/v2/02-registro.png` |
+| 3 | Usuario | Inicio con saludo y perfil sin panel | `capturas/v2/03-home-usuario.png`, `04-perfil-usuario.png` |
+| 4 | Admin | Panel de administrador | `capturas/v2/05-perfil-admin.png` |
+| 5 | Admin | Elegir seña → consejos → subir video → nota | `capturas/v2/06-grabar-paso2.png`, `07-grabar-preview.png` |
+| 6 | Admin | "Mis videos" con estado Pendiente | `capturas/v2/08-mis-videos.png` |
+| 7 | Super | Contador rojo de pendientes en Perfil | `capturas/v2/09-perfil-super.png` |
+| 8 | Super | Revisar → Aprobar | `capturas/v2/10-revisar.png`, `11-aprobado.png` |
+| 9 | Super | Lista de usuarios → Ana pasa a Administrador | `capturas/v2/12-usuarios.png` … `14-rol-guardado.png` |
+| 10 | Super | Nombra superusuario a Admin Demo; ya no puede degradarlo | `capturas/v2/15-super-no-degrada.png` |
+| 11 | Principal | Panel con Estadísticas | `capturas/v2/16-perfil-principal.png` … `19-estadisticas-3.png` |
+| 12 | Usuario | La seña muestra "Con video" y se reproduce | `capturas/v2/20-detalle-con-video.png`, `21-video.png` |
+
+Sin errores de JavaScript en consola. (En el navegador de pruebas el video aparece en negro porque Chromium de código abierto no incluye el códec H.264; en celulares y en Chrome/Edge normales se reproduce.)

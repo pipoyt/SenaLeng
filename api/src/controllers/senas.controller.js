@@ -2,6 +2,17 @@ const db = require('../db/store');
 const { ApiError, ok } = require('../utils/response');
 const { normalize, canonicalNivel } = require('../utils/text');
 const { validateSena } = require('../validators/sena.validator');
+const { hasRole } = require('../utils/roles');
+const storage = require('../services/storage');
+
+/**
+ * El video de una seña solo cambia por el flujo de aprobación (o por un superusuario).
+ * Así un admin no puede publicar un video sin revisión.
+ */
+const stripVideoIfNotSuper = (req, value) => {
+  if (!hasRole(req.user, 'superusuario')) delete value.videoUrl;
+  return value;
+};
 
 const SORTABLE = ['id', 'nombre', 'categoria', 'nivel', 'fechaCreacion'];
 
@@ -55,6 +66,7 @@ exports.related = (req, res) => {
 exports.create = (req, res) => {
   const { value, errors } = validateSena(req.body);
   if (errors.length) throw new ApiError(400, 'Datos inválidos', errors);
+  stripVideoIfNotSuper(req, value);
 
   const dup = db.findOne(
     'senas',
@@ -77,9 +89,11 @@ exports.create = (req, res) => {
 
 /** PUT /api/senas/:id — reemplazo completo. */
 exports.replace = (req, res) => {
-  if (!db.findById('senas', req.params.id)) throw new ApiError(404, 'Seña no encontrada');
+  const current = db.findById('senas', req.params.id);
+  if (!current) throw new ApiError(404, 'Seña no encontrada');
   const { value, errors } = validateSena(req.body);
   if (errors.length) throw new ApiError(400, 'Datos inválidos', errors);
+  if (!hasRole(req.user, 'superusuario')) value.videoUrl = current.videoUrl;
   const sena = db.update('senas', req.params.id, {
     nombre: value.nombre,
     categoria: value.categoria,
@@ -97,15 +111,18 @@ exports.patch = (req, res) => {
   if (!db.findById('senas', req.params.id)) throw new ApiError(404, 'Seña no encontrada');
   const { value, errors } = validateSena(req.body, true);
   if (errors.length) throw new ApiError(400, 'Datos inválidos', errors);
-  return ok(res, db.update('senas', req.params.id, value));
+  return ok(res, db.update('senas', req.params.id, stripVideoIfNotSuper(req, value)));
 };
 
-/** DELETE /api/senas/:id — elimina la seña y sus referencias (favoritos/progreso). */
-exports.remove = (req, res) => {
+/** DELETE /api/senas/:id — elimina la seña y sus referencias (favoritos, progreso y videos). */
+exports.remove = async (req, res) => {
   const id = Number(req.params.id);
   const deleted = db.remove('senas', id);
   if (!deleted) throw new ApiError(404, 'Seña no encontrada');
   db.removeWhere('favoritos', (f) => f.senaId === id);
   db.removeWhere('progreso', (p) => p.senaId === id);
+  const videos = db.all('videos').filter((v) => v.senaId === id);
+  db.removeWhere('videos', (v) => v.senaId === id);
+  await Promise.all(videos.map((v) => storage.remove(v).catch(() => {})));
   return ok(res, { message: 'Seña eliminada correctamente', sena: deleted });
 };

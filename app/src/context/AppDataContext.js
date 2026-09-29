@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
-import { USER_ID } from '../config';
+import { useAuth } from './AuthContext';
 
 const AppDataContext = createContext(null);
 
@@ -11,12 +11,16 @@ const AppDataContext = createContext(null);
  * Todas las operaciones llaman a la API y después actualizan el estado local.
  */
 export function AppDataProvider({ children }) {
+  const { user, can } = useAuth();
+  const USER_ID = user.id;
+  const esSuper = can('superusuario');
   const [favoritos, setFavoritos] = useState([]);
+  const [pendientes, setPendientes] = useState(0);
   const [progreso, setProgreso] = useState(null);
   const [offline, setOffline] = useState(false);
 
   const refreshFavoritos = useCallback(async () => {
-    const res = await api.getFavoritos(USER_ID);
+    const res = await api.getFavoritos();
     setFavoritos(res.data);
     setOffline(res.fromCache);
     return res.data;
@@ -26,18 +30,27 @@ export function AppDataProvider({ children }) {
     const res = await api.getProgreso(USER_ID);
     setProgreso(res.data);
     return res.data;
-  }, []);
+  }, [USER_ID]);
+
+  // Videos pendientes de aprobación (contador para superusuarios)
+  const refreshPendientes = useCallback(async () => {
+    if (!esSuper) return 0;
+    const res = await api.getPendientesTotal();
+    setPendientes(res.data.total);
+    return res.data.total;
+  }, [esSuper]);
 
   useEffect(() => {
     refreshFavoritos().catch(() => {});
     refreshProgreso().catch(() => {});
-  }, [refreshFavoritos, refreshProgreso]);
+    refreshPendientes().catch(() => {});
+  }, [refreshFavoritos, refreshProgreso, refreshPendientes]);
 
   const favBySena = useMemo(() => new Map(favoritos.map((f) => [f.senaId, f])), [favoritos]);
 
   // CREATE
   const addFavorito = useCallback(async (senaId, comentario = '') => {
-    const { data } = await api.addFavorito(senaId, USER_ID, comentario);
+    const { data } = await api.addFavorito(senaId, comentario);
     setFavoritos((prev) => [...prev, data]);
     return data;
   }, []);
@@ -63,7 +76,7 @@ export function AppDataProvider({ children }) {
       await refreshProgreso();
       return !aprendida;
     },
-    [progreso, refreshProgreso],
+    [progreso, refreshProgreso, USER_ID],
   );
 
   const value = {
@@ -71,6 +84,8 @@ export function AppDataProvider({ children }) {
     favBySena,
     progreso,
     offline,
+    pendientes,
+    refreshPendientes,
     refreshFavoritos,
     refreshProgreso,
     addFavorito,

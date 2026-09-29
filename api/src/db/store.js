@@ -9,13 +9,17 @@
 const fs = require('fs');
 const path = require('path');
 const { dbFile } = require('../config');
+const bcrypt = require('bcryptjs');
 const buildSeed = require('./seed');
+const { principal, bcryptRounds } = require('../config');
 
-const TABLES = ['senas', 'usuarios', 'favoritos', 'progreso'];
+const TABLES = ['senas', 'usuarios', 'favoritos', 'progreso', 'videos'];
+const SCHEMA_VERSION = 2;
 
 let state = null;
 
 const emptyState = () => ({
+  version: SCHEMA_VERSION,
   counters: Object.fromEntries(TABLES.map((t) => [t, 0])),
   ...Object.fromEntries(TABLES.map((t) => [t, []])),
 });
@@ -38,15 +42,35 @@ function seed() {
   persist();
 }
 
+/** Garantiza que exista exactamente una cuenta principal (por si se borró el archivo o cambió .env). */
+function ensurePrincipal() {
+  if (state.usuarios.some((u) => u.rol === 'principal')) return;
+  insert('usuarios', {
+    nombre: principal.nombre,
+    correo: principal.correo,
+    passwordHash: bcrypt.hashSync(principal.password, bcryptRounds),
+    rol: 'principal',
+    fechaCreacion: new Date().toISOString(),
+    ultimoAcceso: null,
+  });
+}
+
 function load() {
   if (state) return state;
   if (dbFile !== ':memory:' && fs.existsSync(dbFile)) {
     state = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+    if ((state.version || 1) < SCHEMA_VERSION) {
+      // La versión 1 (Unidad I) no tenía contraseñas ni roles: se regenera con los datos semilla.
+      console.warn('⚠ Base de datos de una versión anterior: se regenera con los datos semilla.');
+      seed();
+      return state;
+    }
     for (const t of TABLES) {
       state[t] = state[t] || [];
       state.counters = state.counters || {};
       state.counters[t] = state.counters[t] || state[t].reduce((m, r) => Math.max(m, r.id), 0);
     }
+    ensurePrincipal();
   } else {
     seed();
   }

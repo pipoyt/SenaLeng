@@ -1,6 +1,9 @@
 const router = require('express').Router();
 const c = require('../controllers/favoritos.controller');
 const validateId = require('../middlewares/validateId');
+const { requireAuth } = require('../middlewares/auth');
+
+router.use(requireAuth);
 
 router.get('/', c.list);
 router.post('/', c.create);

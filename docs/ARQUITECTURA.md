@@ -33,14 +33,15 @@ api/
 │   ├── server.js              Arranque, muestra URLs local y de red
 │   ├── app.js                 Express: CORS, JSON, logs, Swagger, rutas, errores
 │   ├── config/index.js        Puerto, host, archivo de datos, usuario por defecto
-│   ├── routes/                Definición de endpoints (senas, favoritos, usuarios, categorias)
-│   ├── middlewares/           validateId, notFound, errorHandler
+│   ├── routes/                Endpoints: auth, senas, categorias, favoritos, usuarios, videos, estadisticas
+│   ├── middlewares/           auth (requireAuth, requireRole), validateId, errorHandler
+│   ├── services/storage.js    Recepción de videos (multer) y guardado local o en Cloudinary
 │   ├── validators/            Reglas de negocio de cada entidad
 │   ├── controllers/           Lógica de cada operación CRUD
 │   ├── db/store.js            Persistencia (all, findById, insert, update, remove...)
 │   ├── db/seed.js             Datos iniciales
 │   ├── docs/openapi.js        Especificación OpenAPI 3.0
-│   └── utils/                 Respuestas estándar, normalización de texto
+│   └── utils/                 Respuestas estándar, roles y reglas de asignación, texto
 └── tests/api.test.js          22 pruebas de integración
 ```
 
@@ -67,6 +68,21 @@ POST /api/favoritos
 erDiagram
   USUARIO ||--o{ FAVORITO : guarda
   USUARIO ||--o{ PROGRESO : registra
+  USUARIO ||--o{ VIDEO : "envía (admin)"
+  SENA ||--o{ VIDEO : "tiene versiones"
+  VIDEO {
+    int id PK
+    int senaId FK
+    int autorId FK
+    string url
+    string proveedor
+    string estado
+    string nota
+    int revisorId FK
+    string comentarioRevision
+    date fechaEnvio
+    date fechaRevision
+  }
   SENA ||--o{ FAVORITO : "es guardada en"
   SENA ||--o{ PROGRESO : "es aprendida en"
   SENA {
@@ -84,7 +100,10 @@ erDiagram
     int id PK
     string nombre
     string correo
+    string passwordHash
+    string rol
     date fechaCreacion
+    date ultimoAcceso
   }
   FAVORITO {
     int id PK
@@ -102,7 +121,7 @@ erDiagram
   }
 ```
 
-Reglas: (usuarioId, senaId) es único en FAVORITO y en PROGRESO; (nombre, categoria) es único en SENA; al eliminar una seña se eliminan en cascada sus favoritos y progreso.
+Reglas: correo único en USUARIO y exactamente un usuario con rol `principal`; (usuarioId, senaId) es único en FAVORITO y en PROGRESO; (nombre, categoria) es único en SENA; al eliminar una seña se eliminan en cascada sus favoritos y progreso.
 
 ## 4. App — estructura
 
@@ -125,7 +144,22 @@ app/
                                 AgregarFavoritos, SenaForm, Perfil
 ```
 
-### Navegación
+### Navegación (v2)
+
+```
+Sin sesión:  Login · Registro
+Con sesión:
+Stack raíz
+├── Main (pestañas: Inicio · Señas · Favoritos · Perfil 🔴)
+├── Detalle · Video · AgregarFavoritos
+├── SenaForm · GrabarVideo · MisVideos       (admin+)
+├── RevisarVideos · Usuarios                 (superusuario+)
+└── Estadisticas                             (solo principal)
+```
+
+Las pantallas de cada rol ni siquiera se registran en la navegación si la sesión no tiene el rol, y la API vuelve a verificar el permiso en cada petición.
+
+### Navegación (v1)
 
 ```
 Stack raíz
@@ -155,6 +189,7 @@ Stack raíz
 
 ### Manejo de estado y errores
 
+- **AuthContext** guarda la sesión (token + usuario) en el dispositivo, la valida con `/auth/me` al abrir y cierra la sesión si la API responde 401. La caché offline se separa por usuario.
 - **AppDataContext** mantiene la lista de favoritos; así la estrella del detalle, el ✓ de "Agregar a favoritos" y la lista de "Mis favoritos" siempre coinciden.
 - Cada pantalla muestra estados de **carga**, **error con "Reintentar"** y **vacío**.
 - Si la API no responde, `client.js` devuelve la última copia guardada de cualquier GET y la app muestra el aviso *"Sin conexión con la API · mostrando datos guardados"*.

@@ -7,11 +7,6 @@ function validateFavorito(body = {}, partial = false) {
     if (!Number.isInteger(senaId) || senaId < 1) errors.push('"senaId" es obligatorio y debe ser un entero positivo');
     else value.senaId = senaId;
 
-    if (body.usuarioId !== undefined) {
-      const usuarioId = Number(body.usuarioId);
-      if (!Number.isInteger(usuarioId) || usuarioId < 1) errors.push('"usuarioId" debe ser un entero positivo');
-      else value.usuarioId = usuarioId;
-    }
   } else if (body.comentario === undefined) {
     errors.push('Debes enviar el campo "comentario"');
   }

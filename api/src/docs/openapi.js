@@ -35,6 +35,7 @@ const success = (schema, description = 'OK') => ({
   },
 });
 
+const sec = [{ bearerAuth: [] }];
 const ref = (name) => ({ $ref: `#/components/schemas/${name}` });
 const arr = (name) => ({ type: 'array', items: ref(name) });
 
@@ -42,24 +43,61 @@ module.exports = {
   openapi: '3.0.3',
   info: {
     title: 'SeñaLeng API',
-    version: '1.0.0',
+    version: '2.0.0',
     description:
       'API REST para la gestión de señas de la Lengua de Señas Mexicana (LSM).\n\n' +
       'Proyecto integrador — Aplicaciones Web Progresivas, IDGS-10A, UTA (Equipo 6).\n\n' +
       'Todas las respuestas usan el formato `{ success, data }` o `{ success, error }`. ' +
-      'En la Unidad I no hay autenticación; se usa el usuario 1 ("Invitado") por defecto.',
+      '**Autenticación:** JWT. Inicia sesión en `POST /auth/login`, copia el `token` y pulsa **Authorize**.\n\n' +
+      '**Roles:** usuario < admin < superusuario < principal.\n' +
+      '- usuario: favoritos y progreso\n- admin: crea/edita señas y envía videos\n' +
+      '- superusuario: aprueba videos, ve usuarios, asigna roles, elimina señas\n- principal: además ve estadísticas (cuenta única)',
   },
   servers: [
     { url: `http://localhost:${port}/api`, description: 'Entorno local' },
     { url: `http://{ip}:${port}/api`, description: 'Red local (dispositivo físico)', variables: { ip: { default: '192.168.1.100' } } },
   ],
   tags: [
+    { name: 'Autenticación', description: 'Registro, inicio de sesión y cuenta propia' },
     { name: 'Señas', description: 'CRUD de la entidad principal Seña' },
     { name: 'Categorías', description: 'Categorías derivadas de las señas' },
     { name: 'Favoritos', description: 'CRUD de favoritos del usuario (Tabla 3 del documento)' },
-    { name: 'Usuarios', description: 'Registro de usuarios y progreso de aprendizaje' },
+    { name: 'Usuarios', description: 'Usuarios, roles y progreso de aprendizaje' },
+    { name: 'Videos', description: 'Videos de señas grabados por admins y aprobados por superusuarios' },
+    { name: 'Estadísticas', description: 'Panel exclusivo del superusuario principal' },
   ],
   paths: {
+    '/auth/registro': {
+      post: {
+        tags: ['Autenticación'],
+        summary: 'Crear cuenta (rol usuario)',
+        requestBody: { required: true, content: { 'application/json': { schema: ref('RegistroInput') } } },
+        responses: { 201: success(ref('Sesion'), 'Cuenta creada'), ...errorResponses(400, 409) },
+      },
+    },
+    '/auth/login': {
+      post: {
+        tags: ['Autenticación'],
+        summary: 'Iniciar sesión',
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', required: ['correo', 'password'], properties: { correo: { type: 'string', example: 'usuario@senaleng.app' }, password: { type: 'string', example: 'Usuario123!' } } } } },
+        },
+        responses: { 200: success(ref('Sesion')), 401: { description: 'Credenciales incorrectas' }, 429: { description: 'Demasiados intentos' } },
+      },
+    },
+    '/auth/me': {
+      get: { tags: ['Autenticación'], summary: 'Usuario de la sesión', security: sec, responses: { 200: success(ref('Usuario')), 401: { description: 'Sin sesión' } } },
+    },
+    '/auth/password': {
+      patch: {
+        tags: ['Autenticación'],
+        summary: 'Cambiar mi contraseña',
+        security: sec,
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { actual: { type: 'string' }, nueva: { type: 'string' } } } } } },
+        responses: { 200: success({ type: 'object' }), ...errorResponses(400) },
+      },
+    },
     '/senas': {
       get: {
         tags: ['Señas'],
@@ -77,7 +115,8 @@ module.exports = {
       },
       post: {
         tags: ['Señas'],
-        summary: 'Crear una nueva seña',
+        summary: 'Crear una nueva seña (admin+)',
+        security: sec,
         requestBody: { required: true, content: { 'application/json': { schema: ref('SenaInput') } } },
         responses: { 201: success(ref('Sena'), 'Creada'), ...errorResponses(400, 409) },
       },
@@ -87,19 +126,22 @@ module.exports = {
       get: { tags: ['Señas'], summary: 'Obtener una seña por ID', responses: { 200: success(ref('Sena')), ...errorResponses(400, 404) } },
       put: {
         tags: ['Señas'],
-        summary: 'Actualizar una seña (reemplazo completo)',
+        summary: 'Actualizar una seña (admin+)',
+        security: sec,
         requestBody: { required: true, content: { 'application/json': { schema: ref('SenaInput') } } },
         responses: { 200: success(ref('Sena')), ...errorResponses(400, 404) },
       },
       patch: {
         tags: ['Señas'],
-        summary: 'Actualizar parcialmente una seña',
+        summary: 'Actualizar parcialmente una seña (admin+)',
+        security: sec,
         requestBody: { required: true, content: { 'application/json': { schema: ref('SenaPatch') } } },
         responses: { 200: success(ref('Sena')), ...errorResponses(400, 404) },
       },
       delete: {
         tags: ['Señas'],
-        summary: 'Eliminar una seña (también la quita de favoritos y progreso)',
+        summary: 'Eliminar una seña con sus favoritos, progreso y videos (superusuario+)',
+        security: sec,
         responses: { 200: success({ type: 'object' }), ...errorResponses(400, 404) },
       },
     },
@@ -117,9 +159,9 @@ module.exports = {
     '/favoritos': {
       get: {
         tags: ['Favoritos'],
-        summary: 'Listar favoritos del usuario',
+        summary: 'Listar mis favoritos',
+        security: sec,
         parameters: [
-          { name: 'usuarioId', in: 'query', schema: { type: 'integer', default: 1 } },
           { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Buscar en tus favoritos' },
         ],
         responses: { 200: success(arr('Favorito')) },
@@ -127,45 +169,63 @@ module.exports = {
       post: {
         tags: ['Favoritos'],
         summary: 'Agregar una seña a favoritos (con comentario opcional)',
+        security: sec,
         requestBody: { required: true, content: { 'application/json': { schema: ref('FavoritoInput') } } },
         responses: { 201: success(ref('Favorito'), 'Creado'), ...errorResponses(400, 404, 409) },
       },
     },
     '/favoritos/{id}': {
       parameters: [idParam('id', 'ID del favorito')],
-      get: { tags: ['Favoritos'], summary: 'Obtener un favorito', responses: { 200: success(ref('Favorito')), ...errorResponses(404) } },
+      get: { tags: ['Favoritos'], summary: 'Obtener un favorito', security: sec, responses: { 200: success(ref('Favorito')), ...errorResponses(404) } },
       put: {
         tags: ['Favoritos'],
         summary: 'Editar el comentario de un favorito',
+        security: sec,
         requestBody: { required: true, content: { 'application/json': { schema: ref('FavoritoUpdate') } } },
         responses: { 200: success(ref('Favorito')), ...errorResponses(400, 404) },
       },
       patch: {
         tags: ['Favoritos'],
         summary: 'Editar el comentario de un favorito (parcial)',
+        security: sec,
         requestBody: { required: true, content: { 'application/json': { schema: ref('FavoritoUpdate') } } },
         responses: { 200: success(ref('Favorito')), ...errorResponses(400, 404) },
       },
-      delete: { tags: ['Favoritos'], summary: 'Eliminar una seña de favoritos', responses: { 200: success({ type: 'object' }), ...errorResponses(404) } },
+      delete: { tags: ['Favoritos'], summary: 'Eliminar una seña de favoritos', security: sec, responses: { 200: success({ type: 'object' }), ...errorResponses(404) } },
     },
     '/usuarios': {
-      get: { tags: ['Usuarios'], summary: 'Listar usuarios', responses: { 200: success(arr('Usuario')) } },
-      post: {
+      get: {
         tags: ['Usuarios'],
-        summary: 'Registro de usuario',
-        requestBody: { required: true, content: { 'application/json': { schema: ref('UsuarioInput') } } },
-        responses: { 201: success(ref('Usuario'), 'Creado'), ...errorResponses(400, 409) },
+        summary: 'Listar usuarios (superusuario+)',
+        security: sec,
+        parameters: [
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Nombre o correo' },
+          { name: 'rol', in: 'query', schema: { type: 'string', enum: ['usuario', 'admin', 'superusuario', 'principal'] } },
+        ],
+        responses: { 200: success(arr('Usuario')), 403: { description: 'Sin permisos' } },
       },
     },
     '/usuarios/{id}': {
-      get: { tags: ['Usuarios'], summary: 'Obtener un usuario', parameters: [idParam()], responses: { 200: success(ref('Usuario')), ...errorResponses(404) } },
+      get: { tags: ['Usuarios'], summary: 'Obtener un usuario (el propio o superusuario+)', security: sec, parameters: [idParam()], responses: { 200: success(ref('Usuario')), ...errorResponses(404) } },
+    },
+    '/usuarios/{id}/rol': {
+      patch: {
+        tags: ['Usuarios'],
+        summary: 'Asignar rol (superusuario+)',
+        description: 'Roles asignables: usuario, admin, superusuario. Nadie cambia su propio rol ni el del principal. Solo el principal puede cambiar el rol de otro superusuario.',
+        security: sec,
+        parameters: [idParam()],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['rol'], properties: { rol: { type: 'string', enum: ['usuario', 'admin', 'superusuario'] } } } } } },
+        responses: { 200: success(ref('Usuario')), ...errorResponses(400, 404), 403: { description: 'No permitido' } },
+      },
     },
     '/usuarios/{id}/progreso': {
       parameters: [idParam('id', 'ID del usuario')],
-      get: { tags: ['Usuarios'], summary: 'Consultar progreso del usuario', responses: { 200: success(ref('Progreso')), ...errorResponses(404) } },
+      get: { tags: ['Usuarios'], summary: 'Consultar progreso (el propio o superusuario+)', security: sec, responses: { 200: success(ref('Progreso')), ...errorResponses(404) } },
       post: {
         tags: ['Usuarios'],
-        summary: 'Marcar una seña como aprendida',
+        summary: 'Marcar una seña como aprendida (solo el propio usuario)',
+        security: sec,
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['senaId'], properties: { senaId: { type: 'integer', example: 3 } } } } } },
         responses: { 201: success({ type: 'object' }), ...errorResponses(400, 404, 409) },
       },
@@ -174,12 +234,70 @@ module.exports = {
       delete: {
         tags: ['Usuarios'],
         summary: 'Desmarcar una seña aprendida',
+        security: sec,
         parameters: [idParam('id', 'ID del usuario'), idParam('senaId', 'ID de la seña')],
         responses: { 200: success({ type: 'object' }), ...errorResponses(404) },
       },
     },
+    '/videos': {
+      get: {
+        tags: ['Videos'],
+        summary: 'Listar videos (admin: los suyos · superusuario: todos)',
+        security: sec,
+        parameters: [
+          { name: 'estado', in: 'query', schema: { type: 'string', enum: ['pendiente', 'aprobado', 'rechazado', 'reemplazado'] } },
+          { name: 'senaId', in: 'query', schema: { type: 'integer' } },
+          { name: 'mios', in: 'query', schema: { type: 'boolean' }, description: 'Solo los videos que yo envié' },
+        ],
+        responses: { 200: success(arr('Video')) },
+      },
+      post: {
+        tags: ['Videos'],
+        summary: 'Enviar un video para aprobación (admin+)',
+        security: sec,
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['video', 'senaId'],
+                properties: { video: { type: 'string', format: 'binary' }, senaId: { type: 'integer', example: 11 }, nota: { type: 'string', example: 'Grabado con luz natural' } },
+              },
+            },
+          },
+        },
+        responses: { 201: success(ref('Video'), 'Enviado (pendiente)'), ...errorResponses(400, 404), 413: { description: 'Archivo demasiado grande' } },
+      },
+    },
+    '/videos/pendientes/total': {
+      get: { tags: ['Videos'], summary: 'Número de videos pendientes (superusuario+)', security: sec, responses: { 200: success({ type: 'object', properties: { total: { type: 'integer' } } }) } },
+    },
+    '/videos/{id}': {
+      parameters: [idParam('id', 'ID del video')],
+      get: { tags: ['Videos'], summary: 'Obtener un video', security: sec, responses: { 200: success(ref('Video')), ...errorResponses(404) } },
+      delete: { tags: ['Videos'], summary: 'Eliminar (autor: pendientes/rechazados · superusuario: cualquiera)', security: sec, responses: { 200: success({ type: 'object' }), ...errorResponses(404) } },
+    },
+    '/videos/{id}/revision': {
+      patch: {
+        tags: ['Videos'],
+        summary: 'Aprobar o rechazar (superusuario+)',
+        description: 'Al aprobar, el video se vuelve el oficial de la seña (videoUrl) y el anterior queda como "reemplazado". Rechazar exige comentario.',
+        security: sec,
+        parameters: [idParam('id', 'ID del video')],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', required: ['accion'], properties: { accion: { type: 'string', enum: ['aprobar', 'rechazar'] }, comentario: { type: 'string', example: 'Se ve bien' } } } } },
+        },
+        responses: { 200: success(ref('Video')), ...errorResponses(400, 404, 409) },
+      },
+    },
+    '/estadisticas': {
+      get: { tags: ['Estadísticas'], summary: 'Estadísticas generales (solo superusuario principal)', security: sec, parameters: [{ name: 'tz', in: 'query', schema: { type: 'integer', example: 360 }, description: 'Desfase de zona horaria en minutos (getTimezoneOffset) para agrupar por día local' }], responses: { 200: success({ type: 'object' }), 403: { description: 'Solo el principal' } } },
+    },
   },
   components: {
+    securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } },
     schemas: {
       Sena: {
         type: 'object',
@@ -233,19 +351,48 @@ module.exports = {
         required: ['senaId'],
         properties: {
           senaId: { type: 'integer', example: 3 },
-          usuarioId: { type: 'integer', example: 1, description: 'Opcional; por defecto 1' },
           comentario: { type: 'string', example: 'Para practicar con mi hermano' },
         },
       },
       FavoritoUpdate: { type: 'object', required: ['comentario'], properties: { comentario: { type: 'string', example: 'Ya la domino' } } },
       Usuario: {
         type: 'object',
-        properties: { id: { type: 'integer' }, nombre: { type: 'string' }, correo: { type: 'string' }, fechaCreacion: { type: 'string', format: 'date-time' } },
+        properties: {
+          id: { type: 'integer' },
+          nombre: { type: 'string' },
+          correo: { type: 'string' },
+          rol: { type: 'string', enum: ['usuario', 'admin', 'superusuario', 'principal'] },
+          fechaCreacion: { type: 'string', format: 'date-time' },
+          ultimoAcceso: { type: 'string', format: 'date-time', nullable: true },
+        },
       },
-      UsuarioInput: {
+      RegistroInput: {
         type: 'object',
-        required: ['nombre', 'correo'],
-        properties: { nombre: { type: 'string', example: 'Ana López' }, correo: { type: 'string', example: 'ana@correo.com' } },
+        required: ['nombre', 'correo', 'password'],
+        properties: {
+          nombre: { type: 'string', example: 'Ana López' },
+          correo: { type: 'string', example: 'ana@correo.com' },
+          password: { type: 'string', example: 'Clave2026', description: 'Mínimo 8 caracteres con letras y números' },
+        },
+      },
+      Sesion: { type: 'object', properties: { token: { type: 'string' }, usuario: ref('Usuario') } },
+      Video: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          senaId: { type: 'integer' },
+          autorId: { type: 'integer' },
+          url: { type: 'string', example: '/uploads/videos/1727560000-abc123.mp4' },
+          proveedor: { type: 'string', enum: ['local', 'cloudinary'] },
+          estado: { type: 'string', enum: ['pendiente', 'aprobado', 'rechazado', 'reemplazado'] },
+          nota: { type: 'string' },
+          comentarioRevision: { type: 'string' },
+          fechaEnvio: { type: 'string', format: 'date-time' },
+          fechaRevision: { type: 'string', format: 'date-time', nullable: true },
+          sena: { type: 'object' },
+          autor: { type: 'object' },
+          revisor: { type: 'object', nullable: true },
+        },
       },
       Progreso: {
         type: 'object',

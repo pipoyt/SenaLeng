@@ -2,7 +2,7 @@
   "expo": {
     "name": "SeñaLeng",
     "slug": "senaleng",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Aprende Lengua de Señas Mexicana a tu ritmo",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "mx.edu.uta.senaleng",
       "infoPlist": {
-        "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true }
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
@@ -40,6 +42,15 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#6C5CE7"
+        }
+      ],
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "SeñaLeng usa la cámara para grabar videos de señas.",
+          "microphonePermission": "SeñaLeng usa el micrófono al grabar videos de señas.",
+          "photosPermission": "SeñaLeng necesita acceso a tus videos para subir grabaciones de señas."
         }
       ]
     ]

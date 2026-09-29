@@ -17,6 +17,8 @@ Profesor: Jesus Bryan Gonzalez Delgado · **Equipo 6**
 
 SeñaLeng es una aplicación móvil multiplataforma (Android, iOS y web) para aprender **Lengua de Señas Mexicana (LSM)**. Consume una **API REST propia hecha con Node.js + Express** que implementa las operaciones **CRUD** descritas en el documento del proyecto (secciones 10 y 11).
 
+**Versión 2:** cuentas de usuario con correo y contraseña, roles (usuario, administrador, superusuario y principal), grabación de videos de señas con aprobación y panel de estadísticas. Ver [docs/USUARIOS_Y_ROLES.md](docs/USUARIOS_Y_ROLES.md).
+
 ```
 ┌──────────────────────────┐   HTTP / JSON    ┌─────────────────────────┐     ┌──────────────┐
 │  App móvil               │ ───────────────▶ │  SeñaLeng API           │ ──▶ │ data/db.json │
@@ -36,6 +38,7 @@ senaleng/
 │   ├── API.md                Referencia de endpoints con ejemplos
 │   ├── ARQUITECTURA.md       Arquitectura, modelo de datos, pantallas y flujos
 │   ├── PRUEBAS.md            Plan de pruebas y resultados
+│   ├── USUARIOS_Y_ROLES.md   Registro, roles, flujo de videos y estadísticas
 │   ├── RECOMENDACIONES.md    Observaciones al documento y plan para la Unidad II
 │   ├── SenaLeng.postman_collection.json
 │   └── capturas/             Capturas de la app funcionando
@@ -50,6 +53,7 @@ Requisitos: **Node.js 20 o superior** (recomendado 22/24 LTS), npm y la app **Ex
 # 1) API
 cd api
 npm install
+copy .env.example .env   # (Windows) define aquí tu cuenta principal; en macOS/Linux: cp
 npm run dev          # http://localhost:3000/api  ·  docs: http://localhost:3000/api/docs
 
 # 2) App (en otra terminal)
@@ -78,15 +82,20 @@ npx expo start       # escanea el QR con Expo Go (misma red Wi-Fi que la PC)
 | Sección 10.1 Almacenamiento local | Caché de respuestas GET en AsyncStorage (modo sin conexión) |
 | CRUD de la entidad Seña | Crear (botón ＋), editar (✏️) y eliminar (🗑️) desde la app |
 | Progreso del usuario | Marcar "aprendida" + pestaña Perfil con avance por categoría |
+| **v2** Cuentas | Registro e inicio de sesión con correo y contraseña (bcrypt + JWT) |
+| **v2** Roles | Usuario · Administrador · Superusuario · Principal (única) |
+| **v2** Videos | Admins graban o suben el video de una seña → superusuarios aprueban o rechazan |
+| **v2** Gestión | Superusuarios ven todos los usuarios y asignan roles |
+| **v2** Estadísticas | Panel exclusivo del superusuario principal |
 
 ## Tecnologías
 
 | Capa | Tecnología |
 |---|---|
-| App | React Native 0.86 · Expo SDK 57 · React Navigation 7 · AsyncStorage |
-| API | Node.js · Express 4 · CORS · Morgan · swagger-ui-express |
+| App | React Native 0.86 · Expo SDK 57 · React Navigation 7 · AsyncStorage · expo-image-picker · expo-video |
+| API | Node.js · Express 4 · bcryptjs · jsonwebtoken · multer · Cloudinary (opcional) · swagger-ui-express |
 | Datos | Archivo JSON con escritura atómica (sustituible por Prisma + PostgreSQL en la Unidad II) |
-| Pruebas | `node:test` + Supertest (22 pruebas) · Playwright (flujo E2E en web) |
+| Pruebas | `node:test` + Supertest (27 pruebas) · Playwright (flujo E2E en web con los 4 roles) |
 
 > **Nota sobre versiones:** el documento indica Expo SDK 52 / React Native 0.76. La app de **Expo Go** de las tiendas solo ejecuta el SDK más reciente, por eso el proyecto usa **SDK 57**. Ver [docs/RECOMENDACIONES.md](docs/RECOMENDACIONES.md).
 

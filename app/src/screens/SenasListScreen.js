@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import useSenas, { useCategoriaOptions } from '../hooks/useSenas';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import SearchBar from '../components/SearchBar';
 import Chips from '../components/Chips';
 import SenaRow from '../components/SenaRow';
@@ -19,6 +20,7 @@ export default function SenasListScreen({ navigation, route }) {
   const { senas, loading, error, offline, reload } = useSenas({ q, categoria });
   const [options, reloadOptions] = useCategoriaOptions();
   const { favBySena } = useAppData();
+  const { can } = useAuth();
   const firstFocus = useRef(true);
 
   // Si llegamos desde Inicio con una categoría, aplicamos el filtro.
@@ -42,7 +44,7 @@ export default function SenasListScreen({ navigation, route }) {
     <View>
       <ScreenHeader
         title="Listado de señas"
-        right={<IconButton icon="＋" label="Crear nueva seña" onPress={() => navigation.navigate('SenaForm')} />}
+        right={can('admin') ? <IconButton icon="＋" label="Crear nueva seña" onPress={() => navigation.navigate('SenaForm')} /> : null}
       />
       <OfflineBanner visible={offline} />
       <SearchBar value={q} onChangeText={setQ} />
@@ -67,7 +69,7 @@ export default function SenasListScreen({ navigation, route }) {
           renderItem={({ item }) => (
             <SenaRow
               sena={item}
-              subtitle={`${item.categoria} · ${item.nivel}${favBySena.has(item.id) ? '  ⭐' : ''}`}
+              subtitle={`${item.categoria} · ${item.nivel}${item.videoUrl ? '  🎬' : ''}${favBySena.has(item.id) ? '  ⭐' : ''}`}
               onPress={() => navigation.navigate('Detalle', { id: item.id, sena: item })}
             />
           )}

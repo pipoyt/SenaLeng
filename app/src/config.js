@@ -23,5 +23,3 @@ export function getDefaultApiUrl() {
   return Platform.OS === 'android' ? `http://10.0.2.2:${PORT}/api` : `http://localhost:${PORT}/api`;
 }
 
-// Usuario por defecto mientras no exista autenticación (Unidad I).
-export const USER_ID = 1;

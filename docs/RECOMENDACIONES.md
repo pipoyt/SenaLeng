@@ -27,6 +27,8 @@ Detectados al revisar `Equipo6-IDGS-10A.docx` contra el proyecto implementado:
 
 ## 3. Plan recomendado para la Unidad II
 
+> **Actualización v2:** ya están hechos la autenticación (bcrypt + JWT), los roles, la subida de videos con aprobación (local o Cloudinary) y el panel de estadísticas. Quedan pendientes de la tabla: base de datos real, despliegue, lecciones/ejercicios, notificaciones, PWA y seguridad extra.
+
 | Prioridad | Tarea | Detalle técnico |
 |---|---|---|
 | Alta | Base de datos real | **Prisma + PostgreSQL** (Neon o Supabase tienen plan gratuito). Solo se reescribe `api/src/db/store.js`; el esquema está en `docs/ARQUITECTURA.md`. |

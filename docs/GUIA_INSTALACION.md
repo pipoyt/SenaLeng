@@ -28,6 +28,17 @@ cd senaleng
 ```bash
 cd api
 npm install
+```
+
+**Primera vez: crea tu archivo `.env`** (define la cuenta principal, que es la única que ve estadísticas):
+
+```powershell
+copy .env.example .env     # Windows
+notepad .env               # cambia PRINCIPAL_CORREO, PRINCIPAL_PASSWORD y JWT_SECRET
+```
+(macOS/Linux: `cp .env.example .env`). El archivo `.env` no se sube a GitHub. Más detalles en [USUARIOS_Y_ROLES.md](USUARIOS_Y_ROLES.md).
+
+```bash
 npm run dev
 ```
 
@@ -41,7 +52,9 @@ Verás algo como:
 ```
 
 - Abre **http://localhost:3000/api/docs** para ver y probar todos los endpoints con Swagger.
-- La primera vez se crea `api/data/db.json` con 33 señas de ejemplo, el usuario *Invitado* (id 1), 3 favoritos y algo de progreso.
+- La primera vez se crea `api/data/db.json` con 33 señas de ejemplo, la cuenta principal y 3 cuentas de prueba (super, admin y usuario; ver [USUARIOS_Y_ROLES.md](USUARIOS_Y_ROLES.md)).
+- Si tenías la base de datos de la versión 1, se regenera sola al arrancar (la v1 no tenía contraseñas).
+- Los videos subidos quedan en `api/uploads/` (o en Cloudinary si configuras `CLOUDINARY_URL`).
 
 ### Scripts de la API
 
@@ -51,6 +64,7 @@ Verás algo como:
 | `npm start` | Inicia en modo normal |
 | `npm test` | Ejecuta las 22 pruebas automatizadas |
 | `npm run seed` | Restablece la base de datos a los datos semilla (detén la API antes) |
+| `npm run principal` | Aplica a la cuenta principal el correo/contraseña que tengas en `.env` |
 
 ### Variables de entorno (opcional)
 
@@ -61,6 +75,11 @@ Copia `.env.example` a `.env` o define en la terminal:
 | `PORT` | `3000` | Puerto HTTP |
 | `HOST` | `0.0.0.0` | Interfaz (0.0.0.0 permite conexiones desde el celular) |
 | `DB_FILE` | `api/data/db.json` | Archivo de datos; `:memory:` para no guardar en disco |
+| `JWT_SECRET` | (de desarrollo) | Clave para firmar sesiones. **Cámbiala** |
+| `PRINCIPAL_NOMBRE` / `PRINCIPAL_CORREO` / `PRINCIPAL_PASSWORD` | cuenta de ejemplo | La cuenta única que ve estadísticas |
+| `SEED_DEMO_USERS` | `true` | Crear cuentas de prueba |
+| `MAX_VIDEO_MB` | `60` | Tamaño máximo por video |
+| `CLOUDINARY_URL` | vacío | Si se define, los videos se suben a Cloudinary |
 
 En PowerShell: `$env:PORT=4000; npm start`
 
@@ -102,6 +121,9 @@ Importa `docs/SenaLeng.postman_collection.json`. La variable `baseUrl` ya apunta
 | Red escolar aísla dispositivos | Usa el hotspot del celular, o `npx expo start --tunnel` y expón la API con un túnel (ej. `npx localtunnel --port 3000`) y pega esa URL en Perfil. |
 | Expo Go dice "Project is incompatible with this version of Expo Go" | Actualiza Expo Go. El proyecto usa SDK 57. |
 | `EADDRINUSE: 3000` | Ya hay algo en el puerto 3000: cierra la otra API o usa `PORT=3001`. Cambia también la URL en la app. |
+| "Sesión inválida o expirada" | Vuelve a iniciar sesión. Pasa si cambiaste `JWT_SECRET` o pasaron 7 días. |
+| Olvidé la contraseña del principal | Cambia `PRINCIPAL_PASSWORD` en `api/.env`, detén la API y ejecuta `npm run principal`. |
+| No se ve el video en el celular | Revisa que la URL de la API en Perfil sea la IP de la PC (no `localhost`). |
 | Quiero empezar de cero | Detén la API y ejecuta `npm run seed`. En la app, desinstala/limpia datos de Expo Go para borrar la caché. |
 | Dependencias inconsistentes en la app | `npx expo install --fix` y luego `npx expo-doctor`. |
 

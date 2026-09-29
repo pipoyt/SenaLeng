@@ -1,15 +1,36 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getDefaultApiUrl } from '../config';
 
 const URL_KEY = '@senaleng/apiUrl';
 const CACHE_PREFIX = '@senaleng/cache:';
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 10000;
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
 let baseUrl = getDefaultApiUrl();
+let token = null;
+let cacheScope = 'anon';
+let onUnauthorized = null;
 
 export const getApiUrl = () => baseUrl;
 
-/** Carga la URL guardada por el usuario (pestaña Perfil). */
+/** Convierte "/uploads/videos/x.mp4" en una URL completa hacia la API. */
+export const resolveMediaUrl = (url) => {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${baseUrl.replace(/\/api\/?$/, '')}${url}`;
+};
+
+/** Sesión: el token JWT se envía en cada petición. */
+export function setSession(newToken, userId) {
+  token = newToken || null;
+  cacheScope = userId ? `u${userId}` : 'anon';
+}
+export const setUnauthorizedHandler = (fn) => {
+  onUnauthorized = fn;
+};
+
+/** Carga la URL guardada por el usuario (pestaña Perfil / pantalla de inicio de sesión). */
 export async function loadApiUrl() {
   try {
     const saved = await AsyncStorage.getItem(URL_KEY);
@@ -35,49 +56,98 @@ export class ApiError extends Error {
   }
 }
 
+const networkError = (e) =>
+  new ApiError(
+    e?.name === 'AbortError'
+      ? 'La API tardó demasiado en responder'
+      : `No se pudo conectar con la API (${baseUrl}). Verifica que esté encendida y en la misma red.`,
+  );
+
+async function parse(res, path) {
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) {
+    const err = json?.error;
+    const msg = err?.details?.length ? `${err.message}: ${err.details.join('. ')}` : err?.message || `Error ${res.status}`;
+    if (res.status === 401 && token && !path.startsWith('/auth/login')) onUnauthorized?.();
+    throw new ApiError(msg, res.status, err?.details);
+  }
+  return json;
+}
+
 /**
  * Petición HTTP a la API con:
+ *  - token de sesión (Authorization: Bearer ...)
  *  - formato estándar { success, data } / { success, error }
  *  - tiempo límite
- *  - caché local de las respuestas GET (funcionamiento parcial sin conexión)
+ *  - caché local por usuario de las respuestas GET (funcionamiento parcial sin conexión)
  */
 export async function request(path, { method = 'GET', body, cache = method === 'GET' } = {}) {
-  const url = `${baseUrl}${path}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const cacheKey = `${CACHE_PREFIX}${cacheScope}:${path}`;
+  const headers = { Accept: 'application/json' };
+  if (body) headers['Content-Type'] = 'application/json';
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`${baseUrl}${path}`, {
       method,
-      headers: body ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
-    const json = await res.json().catch(() => null);
-
-    if (!res.ok || !json?.success) {
-      const err = json?.error;
-      const msg = err?.details?.length ? `${err.message}: ${err.details.join('. ')}` : err?.message || `Error ${res.status}`;
-      throw new ApiError(msg, res.status, err?.details);
-    }
-
-    if (cache) AsyncStorage.setItem(CACHE_PREFIX + path, JSON.stringify(json)).catch(() => {});
+    const json = await parse(res, path);
+    if (cache) AsyncStorage.setItem(cacheKey, JSON.stringify(json)).catch(() => {});
     return { data: json.data, meta: json.meta, fromCache: false };
   } catch (e) {
     if (e instanceof ApiError) throw e;
-    // Error de red: intentamos con la copia en caché.
     if (cache) {
-      const cached = await AsyncStorage.getItem(CACHE_PREFIX + path).catch(() => null);
+      const cached = await AsyncStorage.getItem(cacheKey).catch(() => null);
       if (cached) {
         const json = JSON.parse(cached);
         return { data: json.data, meta: json.meta, fromCache: true };
       }
     }
-    throw new ApiError(
-      e.name === 'AbortError'
-        ? 'La API tardó demasiado en responder'
-        : `No se pudo conectar con la API (${baseUrl}). Verifica que esté encendida y en la misma red.`,
-    );
+    throw networkError(e);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Sube un video (multipart/form-data).
+ * @param asset resultado de expo-image-picker ({ uri, mimeType, fileName })
+ */
+async function uploadVideo(asset, senaId, nota = '') {
+  const form = new FormData();
+  const type = asset.mimeType || 'video/mp4';
+  const ext = type.includes('quicktime') ? 'mov' : type.split('/')[1] || 'mp4';
+  const name = asset.fileName || `sena-${senaId}-${Date.now()}.${ext}`;
+
+  if (Platform.OS === 'web') {
+    // En web el picker devuelve un blob: URL; hay que convertirlo en Blob real.
+    const blob = asset.file || (await (await fetch(asset.uri)).blob());
+    form.append('video', blob, name);
+  } else {
+    form.append('video', { uri: asset.uri, name, type });
+  }
+  form.append('senaId', String(senaId));
+  form.append('nota', nota);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${baseUrl}/videos`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+      body: form,
+      signal: controller.signal,
+    });
+    const json = await parse(res, '/videos');
+    return { data: json.data };
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    throw networkError(e);
   } finally {
     clearTimeout(timer);
   }
@@ -89,6 +159,12 @@ const qs = (params = {}) => {
 };
 
 export const api = {
+  // Autenticación
+  login: (correo, password) => request('/auth/login', { method: 'POST', body: { correo, password } }),
+  registro: (nombre, correo, password) => request('/auth/registro', { method: 'POST', body: { nombre, correo, password } }),
+  me: () => request('/auth/me', { cache: false }),
+  cambiarPassword: (actual, nueva) => request('/auth/password', { method: 'PATCH', body: { actual, nueva } }),
+
   // Señas (entidad principal)
   getSenas: (params) => request(`/senas${qs(params)}`),
   getSena: (id) => request(`/senas/${id}`),
@@ -100,17 +176,30 @@ export const api = {
 
   getCategorias: () => request('/categorias'),
 
-  // Favoritos (CRUD de la Tabla 3)
-  getFavoritos: (usuarioId) => request(`/favoritos${qs({ usuarioId })}`),
-  addFavorito: (senaId, usuarioId, comentario = '') =>
-    request('/favoritos', { method: 'POST', body: { senaId, usuarioId, comentario } }),
+  // Favoritos del usuario de la sesión
+  getFavoritos: () => request('/favoritos'),
+  addFavorito: (senaId, comentario = '') => request('/favoritos', { method: 'POST', body: { senaId, comentario } }),
   updateFavorito: (id, comentario) => request(`/favoritos/${id}`, { method: 'PATCH', body: { comentario } }),
   deleteFavorito: (id) => request(`/favoritos/${id}`, { method: 'DELETE' }),
 
-  // Usuarios / progreso
+  // Progreso
   getProgreso: (usuarioId) => request(`/usuarios/${usuarioId}/progreso`),
   marcarAprendida: (usuarioId, senaId) => request(`/usuarios/${usuarioId}/progreso`, { method: 'POST', body: { senaId } }),
   desmarcarAprendida: (usuarioId, senaId) => request(`/usuarios/${usuarioId}/progreso/${senaId}`, { method: 'DELETE' }),
+
+  // Usuarios y roles (superusuarios)
+  getUsuarios: (params) => request(`/usuarios${qs(params)}`, { cache: false }),
+  cambiarRol: (id, rol) => request(`/usuarios/${id}/rol`, { method: 'PATCH', body: { rol } }),
+
+  // Videos
+  uploadVideo,
+  getVideos: (params) => request(`/videos${qs(params)}`, { cache: false }),
+  getPendientesTotal: () => request('/videos/pendientes/total', { cache: false }),
+  revisarVideo: (id, accion, comentario = '') => request(`/videos/${id}/revision`, { method: 'PATCH', body: { accion, comentario } }),
+  deleteVideo: (id) => request(`/videos/${id}`, { method: 'DELETE' }),
+
+  // Estadísticas (solo principal)
+  getEstadisticas: () => request(`/estadisticas?tz=${new Date().getTimezoneOffset()}`, { cache: false }),
 
   health: () => request('/health', { cache: false }),
 };

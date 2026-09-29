@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { ErrorView, Loading, OfflineBanner } from '../components/StateView';
 import { colors, font, pastelFor, radius, shadow } from '../theme';
 
 /** Pantalla de inicio (Figura 3): lección del día + categorías. */
 export default function HomeScreen({ navigation }) {
   const { progreso, refreshProgreso } = useAppData();
+  const { user } = useAuth();
   const [categorias, setCategorias] = useState(null);
   const [error, setError] = useState(null);
   const [offline, setOffline] = useState(false);
@@ -60,11 +62,11 @@ export default function HomeScreen({ navigation }) {
         <OfflineBanner visible={offline} />
         <View style={styles.header}>
           <View>
-            <Text style={font.overline}>Bienvenido a</Text>
+            <Text style={font.overline}>Hola, {user.nombre.split(' ')[0]}</Text>
             <Text style={styles.brand}>SeñaLeng 👋</Text>
           </View>
           <Pressable style={styles.avatar} onPress={() => navigation.navigate('Perfil')} accessibilityLabel="Ir a perfil">
-            <Text style={{ fontSize: 18 }}>🙂</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.primary }}>{user.nombre.charAt(0).toUpperCase()}</Text>
           </Pressable>
         </View>
 

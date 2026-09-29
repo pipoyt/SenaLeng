@@ -1,6 +1,6 @@
 {
   "name": "senaleng-app",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.js",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -9,8 +9,10 @@
     "@react-navigation/native-stack": "^7.19.2",
     "expo": "~57.0.25",
     "expo-constants": "~57.0.19",
+    "expo-image-picker": "~57.0.20",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-video": "~57.0.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",

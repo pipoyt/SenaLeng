@@ -7,6 +7,9 @@
  * documento del proyecto). videoUrl e imagenUrl quedan en null hasta contar
  * con el material multimedia grabado por el equipo o validadores.
  */
+const bcrypt = require('bcryptjs');
+const { principal, seedDemoUsers, bcryptRounds } = require('../config');
+
 module.exports = function buildSeed() {
   const fecha = '2026-09-28T10:00:00.000Z';
 
@@ -72,26 +75,38 @@ module.exports = function buildSeed() {
     s('Enojado', 'Emociones', 'Intermedio', '😠', 'Mano en garra frente al rostro que se tensa y se aleja, con el ceño fruncido.'),
   ];
 
-  const usuarios = [
-    {
-      nombre: 'Invitado',
-      correo: 'invitado@senaleng.app',
-      fechaCreacion: fecha,
-    },
-  ];
+  // Usuarios: el principal siempre se crea; las cuentas demo son opcionales (SEED_DEMO_USERS=false).
+  const hash = (pw) => bcrypt.hashSync(pw, bcryptRounds);
+  const u = (nombre, correo, password, rol) => ({
+    nombre,
+    correo,
+    passwordHash: hash(password),
+    rol,
+    fechaCreacion: fecha,
+    ultimoAcceso: null,
+  });
+  const usuarios = [u(principal.nombre, principal.correo, principal.password, 'principal')];
+  if (seedDemoUsers) {
+    usuarios.push(
+      u('Super Demo', 'super@senaleng.app', 'Super123!', 'superusuario'),
+      u('Admin Demo', 'admin@senaleng.app', 'Admin123!', 'admin'),
+      u('Usuario Demo', 'usuario@senaleng.app', 'Usuario123!', 'usuario'),
+    );
+  }
 
-  // Favoritos y progreso de ejemplo para el usuario 1 (se ven en los wireframes)
+  // Favoritos y progreso de ejemplo para "Usuario Demo" (id 4)
+  const demo = seedDemoUsers ? 4 : 1;
   const favoritos = [
-    { usuarioId: 1, senaId: 6, comentario: 'La primera que aprendí', fechaCreacion: fecha, fechaActualizacion: fecha },
-    { usuarioId: 1, senaId: 11, comentario: '', fechaCreacion: fecha, fechaActualizacion: fecha },
-    { usuarioId: 1, senaId: 16, comentario: 'Practicar con los demás números', fechaCreacion: fecha, fechaActualizacion: fecha },
+    { usuarioId: demo, senaId: 6, comentario: 'La primera que aprendí', fechaCreacion: fecha, fechaActualizacion: fecha },
+    { usuarioId: demo, senaId: 11, comentario: '', fechaCreacion: fecha, fechaActualizacion: fecha },
+    { usuarioId: demo, senaId: 16, comentario: 'Practicar con los demás números', fechaCreacion: fecha, fechaActualizacion: fecha },
   ];
 
   const progreso = [6, 7, 11, 12, 16, 17].map((senaId) => ({
-    usuarioId: 1,
+    usuarioId: demo,
     senaId,
     fechaAprendida: fecha,
   }));
 
-  return { senas, usuarios, favoritos, progreso };
+  return { senas, usuarios, favoritos, progreso, videos: [] };
 };
