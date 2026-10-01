@@ -16,6 +16,9 @@ export default function BottomSheet({ visible, onClose, children }) {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(30,27,58,0.45)' },
   sheet: {
+    width: '100%',
+    maxWidth: 560, // en la computadora no ocupa todo el ancho
+    alignSelf: 'center',
     backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
