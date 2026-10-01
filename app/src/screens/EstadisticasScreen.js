@@ -7,9 +7,11 @@ import BackHeader from '../components/BackHeader';
 import { ErrorView, Loading } from '../components/StateView';
 import { ROL_INFO } from '../roles';
 import { colors, font, radius, shadow } from '../theme';
+import useLayout from '../hooks/useLayout';
 
 /** Panel de estadísticas — exclusivo del superusuario principal. */
 export default function EstadisticasScreen() {
+  const { wide } = useLayout();
   const [d, setD] = useState(null);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,8 +60,8 @@ export default function EstadisticasScreen() {
           Actualizado {new Date(d.generadoEn).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })} · desliza hacia abajo para refrescar
         </Text>
 
-        {/* Indicadores principales */}
-        <View style={styles.grid}>
+        {/* Indicadores principales (4 en fila en computadora) */}
+        <View style={[styles.grid, wide && styles.grid4]}>
           <Kpi n={d.usuarios.total} label="Usuarios" sub={`+${d.usuarios.nuevos7d} esta semana`} />
           <Kpi n={d.usuarios.activos7d} label="Activos (7 días)" sub={`${pct(d.usuarios.activos7d, d.usuarios.total)}% del total`} />
           <Kpi n={`${d.senas.porcentajeConVideo}%`} label="Señas con video" sub={`${d.senas.conVideo} de ${d.senas.total}`} />
@@ -181,7 +183,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   pad: { paddingHorizontal: 20 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 4 },
-  kpi: { width: '48.5%', backgroundColor: colors.card, borderRadius: radius.md, padding: 14, marginBottom: 10, ...shadow },
+  grid4: { flexWrap: 'nowrap', columnGap: 12 },
+  kpi: { flexGrow: 1, flexBasis: '45%', backgroundColor: colors.card, borderRadius: radius.md, padding: 14, marginBottom: 10, ...shadow },
   kpiSmall: { backgroundColor: colors.background, shadowOpacity: 0, elevation: 0 },
   kpiN: { fontSize: 28, fontWeight: '800', color: colors.text },
   kpiLabel: { fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 2 },

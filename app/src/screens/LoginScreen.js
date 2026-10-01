@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   logo: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)' },
   brand: { fontSize: 32, fontWeight: '800', color: colors.white, marginTop: 10 },
   tag: { fontSize: 14, color: '#E4E0FF', marginTop: 4 },
-  card: { backgroundColor: colors.card, borderRadius: radius.lg + 4, padding: 22, ...shadow },
+  card: { width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: colors.card, borderRadius: radius.lg + 4, padding: 22, ...shadow },
   title: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 16 },
   error: { color: colors.danger, marginBottom: 12, fontWeight: '600' },
   link: { alignItems: 'center', marginTop: 16 },

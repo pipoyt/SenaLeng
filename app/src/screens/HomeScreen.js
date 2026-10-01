@@ -7,11 +7,13 @@ import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
 import { ErrorView, Loading, OfflineBanner } from '../components/StateView';
 import { colors, font, pastelFor, radius, shadow } from '../theme';
+import useLayout from '../hooks/useLayout';
 
 /** Pantalla de inicio (Figura 3): lección del día + categorías. */
 export default function HomeScreen({ navigation }) {
   const { progreso, refreshProgreso } = useAppData();
   const { user } = useAuth();
+  const { wide, columns } = useLayout();
   const [categorias, setCategorias] = useState(null);
   const [error, setError] = useState(null);
   const [offline, setOffline] = useState(false);
@@ -71,7 +73,7 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <Pressable style={styles.hero} onPress={() => goCategoria(leccion.nombre)} accessibilityRole="button">
-          <View style={styles.heroTop}>
+          <View style={[styles.heroTop, wide && { height: 180 }]}>
             <Text style={styles.heroEmoji}>👋</Text>
           </View>
           <View style={styles.heroBody}>
@@ -88,8 +90,9 @@ export default function HomeScreen({ navigation }) {
         </Pressable>
 
         <Text style={[font.h2, { marginTop: 24, marginBottom: 12 }]}>Categorías</Text>
+        <View style={wide ? styles.grid : null}>
         {categorias.map((c) => (
-          <Pressable key={c.nombre} style={styles.cat} onPress={() => goCategoria(c.nombre)} accessibilityRole="button">
+          <Pressable key={c.nombre} style={[styles.cat, wide && { width: columns === 3 ? '32.33%' : '49.25%' }]} onPress={() => goCategoria(c.nombre)} accessibilityRole="button">
             <View style={[styles.catIcon, { backgroundColor: pastelFor(c.nombre) }]}>
               <Text style={{ fontSize: 18 }}>{c.icono}</Text>
             </View>
@@ -102,6 +105,7 @@ export default function HomeScreen({ navigation }) {
             <Text style={{ fontSize: 20, color: colors.muted }}>›</Text>
           </Pressable>
         ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -121,6 +125,7 @@ const styles = StyleSheet.create({
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   bar: { height: 6, borderRadius: 3, backgroundColor: colors.primarySoft, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: '1.5%' },
   cat: {
     flexDirection: 'row',
     alignItems: 'center',

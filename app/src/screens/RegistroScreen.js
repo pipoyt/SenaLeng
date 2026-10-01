@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 20 },
   brand: { fontSize: 28, fontWeight: '800', color: colors.white, textAlign: 'center' },
   tag: { fontSize: 14, color: '#E4E0FF', textAlign: 'center', marginTop: 6, marginBottom: 20 },
-  card: { backgroundColor: colors.card, borderRadius: radius.lg + 4, padding: 22, ...shadow },
+  card: { width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: colors.card, borderRadius: radius.lg + 4, padding: 22, ...shadow },
   error: { color: colors.danger, marginBottom: 12, fontWeight: '600' },
   link: { alignItems: 'center', marginTop: 16 },
   linkText: { color: colors.muted, fontSize: 14 },

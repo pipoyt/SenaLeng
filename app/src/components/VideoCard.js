@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, font, radius, shadow } from '../theme';
 import Thumb from './Thumb';
 import VideoBox from './VideoBox';
+import useLayout from '../hooks/useLayout';
 
 export const ESTADO_INFO = {
   pendiente: { label: '⏳ Pendiente', color: '#8A6100', bg: '#FFF4D6' },
@@ -17,6 +18,7 @@ const fecha = (iso) =>
 /** Tarjeta de un video enviado: seña, estado, autor, notas y reproductor desplegable. */
 export default function VideoCard({ video, showAutor, children }) {
   const [open, setOpen] = useState(false);
+  const { wide } = useLayout();
   const est = ESTADO_INFO[video.estado];
   return (
     <View style={styles.card}>
@@ -40,7 +42,7 @@ export default function VideoCard({ video, showAutor, children }) {
         </Text>
       ) : null}
 
-      {open ? <VideoBox url={video.url} height={240} autoPlay style={{ marginTop: 12 }} /> : null}
+      {open ? <VideoBox url={video.url} height={wide ? 420 : 240} autoPlay style={{ marginTop: 12 }} /> : null}
       <Pressable onPress={() => setOpen((o) => !o)} style={styles.toggle} accessibilityRole="button">
         <Text style={styles.toggleText}>{open ? 'Ocultar video' : '▶  Ver video'}</Text>
       </Pressable>

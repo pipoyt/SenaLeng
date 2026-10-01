@@ -12,6 +12,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import IconButton from '../components/IconButton';
 import { Empty, ErrorView, Loading, OfflineBanner } from '../components/StateView';
 import { colors } from '../theme';
+import useLayout from '../hooks/useLayout';
 
 /** Listado de señas (Figura 4) — operación READ con búsqueda y filtros. */
 export default function SenasListScreen({ navigation, route }) {
@@ -21,6 +22,8 @@ export default function SenasListScreen({ navigation, route }) {
   const [options, reloadOptions] = useCategoriaOptions();
   const { favBySena } = useAppData();
   const { can } = useAuth();
+  const { columns } = useLayout();
+  const cell = columns > 1 ? { width: `${100 / columns}%`, paddingHorizontal: 6 } : null;
   const firstFocus = useRef(true);
 
   // Si llegamos desde Inicio con una categoría, aplicamos el filtro.
@@ -61,17 +64,22 @@ export default function SenasListScreen({ navigation, route }) {
       ) : (
         <FlatList
           data={senas}
+          key={`cols-${columns}`}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { marginHorizontal: -6 } : undefined}
           keyExtractor={(s) => String(s.id)}
           ListHeaderComponent={header}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={loading && !!senas} onRefresh={reload} tintColor={colors.primary} />}
           renderItem={({ item }) => (
-            <SenaRow
-              sena={item}
-              subtitle={`${item.categoria} · ${item.nivel}${item.videoUrl ? '  🎬' : ''}${favBySena.has(item.id) ? '  ⭐' : ''}`}
-              onPress={() => navigation.navigate('Detalle', { id: item.id, sena: item })}
-            />
+            <View style={cell}>
+              <SenaRow
+                sena={item}
+                subtitle={`${item.categoria} · ${item.nivel}${item.videoUrl ? '  🎬' : ''}${favBySena.has(item.id) ? '  ⭐' : ''}`}
+                onPress={() => navigation.navigate('Detalle', { id: item.id, sena: item })}
+              />
+            </View>
           )}
           ListEmptyComponent={
             <Empty emoji="🔎" title="Sin resultados" text={q ? `No encontramos señas para "${q}".` : 'No hay señas en esta categoría.'} />

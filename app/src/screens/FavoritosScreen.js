@@ -13,6 +13,7 @@ import ConfirmDeleteSheet from '../components/ConfirmDeleteSheet';
 import CommentSheet from '../components/CommentSheet';
 import { Empty, ErrorView, OfflineBanner } from '../components/StateView';
 import { colors } from '../theme';
+import useLayout from '../hooks/useLayout';
 
 const norm = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -23,6 +24,8 @@ const norm = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(
 export default function FavoritosScreen({ navigation }) {
   const { favoritos, offline, refreshFavoritos, updateFavorito, removeFavorito } = useAppData();
   const toast = useToast();
+  const { columns } = useLayout();
+  const cell = columns > 1 ? { width: `${100 / columns}%`, paddingHorizontal: 6 } : null;
   const [q, setQ] = useState('');
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,6 +93,9 @@ export default function FavoritosScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <FlatList
         data={data}
+        key={`cols-${columns}`}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { marginHorizontal: -6 } : undefined}
         keyExtractor={(f) => String(f.id)}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -102,6 +108,7 @@ export default function FavoritosScreen({ navigation }) {
           </View>
         }
         renderItem={({ item }) => (
+          <View style={cell}>
           <SenaRow
             sena={item.sena}
             subtitle={item.sena.categoria}
@@ -119,6 +126,7 @@ export default function FavoritosScreen({ navigation }) {
               </Text>
             ) : null}
           </SenaRow>
+          </View>
         )}
         ListEmptyComponent={
           q ? (

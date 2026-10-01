@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplash from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -32,25 +31,14 @@ function Root() {
   );
 }
 
-// En la computadora (web) la app se muestra en una columna centrada, como en el celular.
-const isWeb = Platform.OS === 'web';
-const outer = { flex: 1, backgroundColor: isWeb ? '#E9E5FB' : '#F5F3FF' };
-const frame = isWeb
-  ? { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: '#F5F3FF', boxShadow: '0 0 40px rgba(76,63,181,0.12)' }
-  : { flex: 1 };
-
 export default function App() {
   return (
-    <View style={outer}>
-      <View style={frame}>
-        <SafeAreaProvider>
-          <ToastProvider>
-            <AuthProvider>
-              <Root />
-            </AuthProvider>
-          </ToastProvider>
-        </SafeAreaProvider>
-      </View>
-    </View>
+    <SafeAreaProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <Root />
+        </AuthProvider>
+      </ToastProvider>
+    </SafeAreaProvider>
   );
 }
