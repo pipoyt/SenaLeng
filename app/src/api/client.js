@@ -119,15 +119,26 @@ export async function request(path, { method = 'GET', body, cache = method === '
 }
 
 /**
- * Sube un video (multipart/form-data).
+ * Sube un video (multipart/form-data) con XMLHttpRequest.
+ *
+ * Importante: en Expo SDK 57 el `fetch` global es "expo/fetch", que NO acepta
+ * archivos locales del teléfono en FormData ({ uri, name, type }). XMLHttpRequest
+ * usa la red nativa de React Native, que sí los acepta, y además permite mostrar
+ * el porcentaje de avance.
+ *
  * @param asset resultado de expo-image-picker ({ uri, mimeType, fileName })
+ * @param onProgress función opcional (0 a 1)
  */
-async function uploadVideo(asset, senaId, nota = '') {
-  const form = new FormData();
-  const type = asset.mimeType || 'video/mp4';
-  const ext = type.includes('quicktime') ? 'mov' : type.split('/')[1] || 'mp4';
-  const name = asset.fileName || `sena-${senaId}-${Date.now()}.${ext}`;
+const VIDEO_TYPES = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', '3gp': 'video/3gpp', webm: 'video/webm', mkv: 'video/x-matroska' };
 
+async function uploadVideo(asset, senaId, nota = '', onProgress) {
+  const ext = (asset.fileName || asset.uri || '').split('?')[0].split('.').pop().toLowerCase();
+  const type = asset.mimeType && asset.mimeType.startsWith('video/') ? asset.mimeType : VIDEO_TYPES[ext] || 'video/mp4';
+  const name = asset.fileName || `sena-${senaId}-${Date.now()}.${VIDEO_TYPES[ext] ? ext : 'mp4'}`;
+
+  const form = new FormData();
+  form.append('senaId', String(senaId));
+  form.append('nota', nota);
   if (Platform.OS === 'web') {
     // En web el picker devuelve un blob: URL; hay que convertirlo en Blob real.
     const blob = asset.file || (await (await fetch(asset.uri)).blob());
@@ -135,26 +146,32 @@ async function uploadVideo(asset, senaId, nota = '') {
   } else {
     form.append('video', { uri: asset.uri, name, type });
   }
-  form.append('senaId', String(senaId));
-  form.append('nota', nota);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${baseUrl}/videos`, {
-      method: 'POST',
-      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-      body: form,
-      signal: controller.signal,
-    });
-    const json = await parse(res, '/videos');
-    return { data: json.data };
-  } catch (e) {
-    if (e instanceof ApiError) throw e;
-    throw networkError(e);
-  } finally {
-    clearTimeout(timer);
-  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${baseUrl}/videos`);
+    xhr.setRequestHeader('Accept', 'application/json');
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
+    if (onProgress && xhr.upload) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && e.total) onProgress(e.loaded / e.total);
+      };
+    }
+    xhr.onload = () => {
+      let json = null;
+      try {
+        json = JSON.parse(xhr.responseText);
+      } catch {}
+      if (xhr.status >= 200 && xhr.status < 300 && json?.success) return resolve({ data: json.data });
+      const err = json?.error;
+      if (xhr.status === 401) onUnauthorized?.();
+      reject(new ApiError(err?.message || `Error ${xhr.status} al subir el video`, xhr.status, err?.details));
+    };
+    xhr.onerror = () => reject(networkError());
+    xhr.ontimeout = () => reject(new ApiError('La subida tardó demasiado. Intenta con un video más corto o una mejor conexión.'));
+    xhr.send(form);
+  });
 }
 
 const qs = (params = {}) => {

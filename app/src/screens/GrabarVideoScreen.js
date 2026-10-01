@@ -27,6 +27,7 @@ export default function GrabarVideoScreen({ route, navigation }) {
   const [video, setVideo] = useState(null);
   const [nota, setNota] = useState('');
   const [sending, setSending] = useState(false);
+  const [progreso, setProgreso] = useState(0);
   const toast = useToast();
 
   const elegir = async (camara) => {
@@ -50,8 +51,9 @@ export default function GrabarVideoScreen({ route, navigation }) {
 
   const enviar = async () => {
     setSending(true);
+    setProgreso(0);
     try {
-      await api.uploadVideo(video, sena.id, nota.trim());
+      await api.uploadVideo(video, sena.id, nota.trim(), setProgreso);
       toast('✓ Video enviado. Un superusuario lo revisará.');
       navigation.replace('MisVideos');
     } catch (e) {
@@ -142,7 +144,16 @@ export default function GrabarVideoScreen({ route, navigation }) {
               accessibilityLabel="Nota para el revisor"
             />
             <Button title="Enviar a revisión" onPress={enviar} loading={sending} style={{ marginTop: 14 }} />
-            {sending ? <Text style={[font.small, { textAlign: 'center', marginTop: 8 }]}>Subiendo video… puede tardar un poco</Text> : null}
+            {sending ? (
+              <View style={{ marginTop: 10 }}>
+                <Text style={[font.small, { textAlign: 'center', marginBottom: 6 }]}>
+                  Subiendo video… {Math.round(progreso * 100)}%
+                </Text>
+                <View style={styles.track}>
+                  <View style={[styles.fill, { width: `${Math.round(progreso * 100)}%` }]} />
+                </View>
+              </View>
+            ) : null}
           </>
         ) : null}
       </ScrollView>
@@ -157,6 +168,8 @@ const styles = StyleSheet.create({
   change: { color: colors.primary, fontWeight: '700', padding: 6 },
   tips: { backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: 16, marginBottom: 16 },
   tip: { fontSize: 14, color: colors.text, marginTop: 4, lineHeight: 20 },
+  track: { height: 6, borderRadius: 3, backgroundColor: colors.primarySoft, overflow: 'hidden' },
+  fill: { height: '100%', backgroundColor: colors.primary },
   label: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 6 },
   input: {
     minHeight: 80,
